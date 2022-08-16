@@ -10,14 +10,22 @@ import (
 )
 
 var (
-	user32           = syscall.MustLoadDLL("user32.dll")
-	kernel32         = syscall.MustLoadDLL("kernel32.dll")
-	getLastInputInfo = user32.MustFindProc("GetLastInputInfo")
-	getTickCount     = kernel32.MustFindProc("GetTickCount")
-	lastInputInfo    struct {
+	user32                  = syscall.MustLoadDLL("user32.dll")
+	kernel32                = syscall.MustLoadDLL("kernel32.dll")
+	getLastInputInfo        = user32.MustFindProc("GetLastInputInfo")
+	getTickCount            = kernel32.MustFindProc("GetTickCount")
+	mod                     = syscall.NewLazyDLL("user32.dll")
+	procGetWindowText       = mod.NewProc("GetWindowTextW")
+	procGetWindowTextLength = mod.NewProc("GetWindowTextLengthW")
+	lastInputInfo           struct {
 		cbSize uint32
 		dwTime uint32
 	}
+)
+
+type (
+	HANDLE uintptr
+	HWND   HANDLE
 )
 
 // checkIfError should be used to naively panics if an error is not nil.
@@ -61,5 +69,37 @@ func winLocked() bool {
 		}
 	}
 
+	return false
+}
+
+func GetWindowTextLength(hwnd HWND) int {
+	ret, _, _ := procGetWindowTextLength.Call(
+		uintptr(hwnd))
+
+	return int(ret)
+}
+
+func GetWindowText(hwnd HWND) string {
+	textLen := GetWindowTextLength(hwnd) + 1
+
+	buf := make([]uint16, textLen)
+	procGetWindowText.Call(
+		uintptr(hwnd),
+		uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(textLen))
+	return syscall.UTF16ToString(buf)
+}
+
+func getWindow(funcName string) uintptr {
+	proc := mod.NewProc(funcName)
+	hwnd, _, _ := proc.Call()
+	return hwnd
+}
+
+func winLocked2() bool {
+	if hwnd := getWindow("GetForegroundWindow"); hwnd != 0 {
+		text := GetWindowText(HWND(hwnd))
+		return text == "Windows 默认锁屏界面"
+	}
 	return false
 }

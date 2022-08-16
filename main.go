@@ -170,7 +170,7 @@ func main() {
 	log.Infof("read cfg: %+v \n", cfg)
 	go func() {
 		for {
-			winLocked := !winLocked()
+			winLocked := winLocked()
 			idleTime := getIdleTime()
 			log.Debugf("ping winLocked:%t idleTime:%8.3f", winLocked, idleTime)
 			if !winLocked && (idleTime > IDLE_LOCK_TIME) {
