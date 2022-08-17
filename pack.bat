@@ -14,7 +14,7 @@ echo rsrc manifesting...
 rsrc -arch amd64 -manifest facelock.exe.manifest -o facelock.exe.syso -ico icon.ico
 
 echo building...
-go build -o facelock.exe -ldflags="-w -s"
+go build -o facelock.exe -ldflags="-w -s  -H windowsgui"
 goto end
 
 :end

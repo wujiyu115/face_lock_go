@@ -50,7 +50,7 @@ func logInit(cfg *Cfg) {
 		// file name
 		cfg.LogFileName+".%Y%m%d.log",
 		// create link point to new log file
-		rotatelogs.WithLinkName(cfg.LogFileName),
+		// rotatelogs.WithLinkName(cfg.LogFileName),
 		// set max age
 		rotatelogs.WithMaxAge(time.Duration(cfg.LogFileMaxAge)*time.Hour*24),
 		// set rotation time

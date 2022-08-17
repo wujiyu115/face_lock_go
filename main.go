@@ -5,7 +5,6 @@ import (
 	"flag"
 	"image"
 	"io/ioutil"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -56,19 +55,9 @@ func checkAndLock(cfg *Cfg, n *gocv.Net) {
 	img := gocv.NewMat()
 	defer img.Close()
 
-	var ratio float64
-	var mean gocv.Scalar
-	var swapRGB bool
-
-	if filepath.Ext(cfg.Model) == ".caffemodel" {
-		ratio = 1.0
-		mean = gocv.NewScalar(104, 177, 123, 0)
-		swapRGB = false
-	} else {
-		ratio = 1.0 / 127.5
-		mean = gocv.NewScalar(127.5, 127.5, 127.5, 0)
-		swapRGB = true
-	}
+	var ratio float64 = 1.0
+	var mean gocv.Scalar = gocv.NewScalar(104, 177, 123, 0)
+	var swapRGB bool = false
 
 	if ok := webcam.Read(&img); !ok {
 		log.Errorf("Device closed: %v\n", deviceID)
