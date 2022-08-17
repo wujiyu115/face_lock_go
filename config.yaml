@@ -1,10 +1,16 @@
+# 日志等级 panic fatal error warn info debug trace
 logLevel: "debug"
+# 日志文件名
 logFileName: "facelock.log"
-# 单位为天
+# 日志保留天数
 logFileMaxAge: 7
-# 单位为小时
+# 日志切割间隔(单位为小时)
 logFileRotationTime: 1
+# 使用第几个摄像头0开始
 deviceID: 0
+# 程序主循环检查间隔(秒)
 checkTime: 5
+# 没有键鼠操作空余时间(秒)
 idleTIme: 10
+# 是否记录日志到文件
 islogFile: false
