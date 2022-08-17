@@ -98,10 +98,11 @@ func checkAndLock(cfg *Cfg, n *gocv.Net) {
 }
 
 func onReady() {
+
 	systray.SetIcon(iconByte)
-	systray.SetTitle("face")
-	systray.SetTooltip("服务已最小化右下角, 右键点击打开菜单！")
-	mQuit := systray.AddMenuItem("退出", "退出程序")
+	systray.SetTitle(getByMessageID("tray_title"))
+	systray.SetTooltip(getByMessageID("tray_tips"))
+	mQuit := systray.AddMenuItem(getByMessageID("exit_menu_title"), getByMessageID("exit_menu_tooltips"))
 	go func() {
 		for {
 			select {
@@ -132,6 +133,7 @@ func main() {
 	err := yaml.Unmarshal(configBytes, &cfg)
 	checkIfError(err)
 	logInit(cfg)
+	initLocalizers()
 
 	log.Debugf("read cfg: %+v \n", cfg)
 

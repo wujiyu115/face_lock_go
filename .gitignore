@@ -1,4 +1,5 @@
 .vscode/
 *.log
 facelock.exe
+face_go.exe
 *.syso

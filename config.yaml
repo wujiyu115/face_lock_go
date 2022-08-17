@@ -1,5 +1,5 @@
 logLevel: "debug"
-logFileName: "pack_go.log"
+logFileName: "facelock.log"
 # 单位为天
 logFileMaxAge: 7
 # 单位为小时
