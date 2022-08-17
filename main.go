@@ -5,7 +5,6 @@ import (
 	"flag"
 	"image"
 	"io/ioutil"
-	"syscall"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -40,14 +39,14 @@ type Cfg struct {
 }
 
 func checkAndLock(cfg *Cfg, n *gocv.Net) {
-	log.Info("Start checkAndLock")
+	log.Debug("Start checkAndLock")
 	// parse args
 	deviceID := cfg.DeviceID
 
 	// open capture device
 	webcam, err := gocv.OpenVideoCapture(deviceID)
 	if err != nil {
-		log.Infof("Error opening video capture device: %v\n", deviceID)
+		log.Errorf("Error opening video capture device: %v\n", deviceID)
 		return
 	}
 	defer webcam.Close()
@@ -79,6 +78,14 @@ func checkAndLock(cfg *Cfg, n *gocv.Net) {
 		confidence := prob.GetFloatAt(0, i+2)
 		if confidence > 0.5 {
 			foundFace = true
+			/**
+			left := int(prob.GetFloatAt(0, i+3) * float32(img.Cols()))
+			top := int(prob.GetFloatAt(0, i+4) * float32(img.Rows()))
+			right := int(prob.GetFloatAt(0, i+5) * float32(img.Cols()))
+			bottom := int(prob.GetFloatAt(0, i+6) * float32(img.Rows()))
+			resultMat := img.Region(image.Rect(left, top, right, bottom))
+			gocv.IMWrite("croppedMat.png", resultMat)
+			**/
 		}
 	}
 	prob.Close()
@@ -87,44 +94,17 @@ func checkAndLock(cfg *Cfg, n *gocv.Net) {
 		log.Info("Lock checkAndLock")
 		lockWorkStation()
 	}
-	log.Info("End checkAndLock")
+	log.Debug("End checkAndLock")
 }
 
 func onReady() {
 	systray.SetIcon(iconByte)
 	systray.SetTitle("face")
 	systray.SetTooltip("服务已最小化右下角, 右键点击打开菜单！")
-	mShow := systray.AddMenuItem("显示", "显示窗口")
-	mHide := systray.AddMenuItem("隐藏", "隐藏窗口")
-	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("退出", "退出程序")
-
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	user32 := syscall.NewLazyDLL("user32.dll")
-	getConsoleWindows := kernel32.NewProc("GetConsoleWindow")
-	showWindowAsync := user32.NewProc("ShowWindowAsync")
-	consoleHandle, r2, err := getConsoleWindows.Call()
-	if consoleHandle == 0 {
-		log.Error("Error call GetConsoleWindow: ", consoleHandle, r2, err)
-	}
-
 	go func() {
 		for {
 			select {
-			case <-mShow.ClickedCh:
-				mShow.Disable()
-				mHide.Enable()
-				r1, r2, err := showWindowAsync.Call(consoleHandle, 5)
-				if r1 != 1 {
-					log.Error("Error call ShowWindow @SW_SHOW: ", r1, r2, err)
-				}
-			case <-mHide.ClickedCh:
-				mHide.Disable()
-				mShow.Enable()
-				r1, r2, err := showWindowAsync.Call(consoleHandle, 0)
-				if r1 != 1 {
-					log.Error("Error call ShowWindow @SW_HIDE: ", r1, r2, err)
-				}
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 			}
@@ -153,7 +133,7 @@ func main() {
 	checkIfError(err)
 	logInit(cfg)
 
-	log.Infof("read cfg: %+v \n", cfg)
+	log.Debugf("read cfg: %+v \n", cfg)
 
 	proto, err := weights.ReadFile("weights/deploy.prototxt.txt")
 	checkIfError(err)
