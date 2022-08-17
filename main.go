@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"image"
 	"io/ioutil"
@@ -14,26 +15,35 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Cfg struct {
-	LogLevel            string `yaml:"logLevel"`
-	LogFileName         string `yaml:"logFileName"`
-	LogFileMaxAge       int64  `yaml:"logFileMaxAge"`
-	LogFileRotationTime int64  `yaml:"logFileRotationTime"`
-	Model               string `yaml:"model"`
-	Proto               string `yaml:"proto"`
-	DeviceID            int    `yaml:"deviceID"`
-}
+//go:embed weights
+var weights embed.FS
 
-const (
-	IDLE_LOCK_TIME float32 = 10
+//go:embed config.yaml
+var configBytes []byte
+
+//go:embed icon.ico
+var iconByte []byte
+
+var (
+	net gocv.Net
 )
 
-func checkAndLock(cfg *Cfg) {
+type Cfg struct {
+	LogLevel            string  `yaml:"logLevel"`
+	LogFileName         string  `yaml:"logFileName"`
+	LogFileMaxAge       int64   `yaml:"logFileMaxAge"`
+	LogFileRotationTime int64   `yaml:"logFileRotationTime"`
+	Model               string  `yaml:"model"`
+	Proto               string  `yaml:"proto"`
+	DeviceID            int     `yaml:"deviceID"`
+	CheckTime           int     `yaml:"checkTime"`
+	IdleTIme            float32 `yaml:"idleTIme"`
+}
+
+func checkAndLock(cfg *Cfg, n *gocv.Net) {
+	log.Info("Start checkAndLock")
 	// parse args
 	deviceID := cfg.DeviceID
-	backend := gocv.NetBackendDefault
-
-	target := gocv.NetTargetCPU
 
 	// open capture device
 	webcam, err := gocv.OpenVideoCapture(deviceID)
@@ -45,16 +55,6 @@ func checkAndLock(cfg *Cfg) {
 
 	img := gocv.NewMat()
 	defer img.Close()
-
-	// open DNN object tracking model
-	net := gocv.ReadNet(cfg.Model, cfg.Proto)
-	if net.Empty() {
-		log.Errorf("Error reading network model from : %v %v\n", cfg.Model, cfg.Proto)
-		return
-	}
-	defer net.Close()
-	net.SetPreferableBackend(gocv.NetBackendType(backend))
-	net.SetPreferableTarget(gocv.NetTargetType(target))
 
 	var ratio float64
 	var mean gocv.Scalar
@@ -70,8 +70,6 @@ func checkAndLock(cfg *Cfg) {
 		swapRGB = true
 	}
 
-	log.Info("Start checkAndLock")
-
 	if ok := webcam.Read(&img); !ok {
 		log.Errorf("Device closed: %v\n", deviceID)
 		return
@@ -80,15 +78,12 @@ func checkAndLock(cfg *Cfg) {
 		return
 	}
 	img.ConvertTo(&img, gocv.MatTypeCV32F)
-
 	// convert image Mat to 300x300 blob that the object detector can analyze
 	blob := gocv.BlobFromImage(img, ratio, image.Pt(300, 300), mean, swapRGB, false)
-
 	// feed the blob into the detector
-	net.SetInput(blob, "")
-
+	n.SetInput(blob, "")
 	// run a forward pass thru the network
-	prob := net.Forward("")
+	prob := n.Forward("")
 
 	foundFace := false
 	for i := 0; i < prob.Total(); i += 7 {
@@ -117,9 +112,7 @@ func onReady() {
 
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
 	user32 := syscall.NewLazyDLL("user32.dll")
-	// https://docs.microsoft.com/en-us/windows/console/getconsolewindow
 	getConsoleWindows := kernel32.NewProc("GetConsoleWindow")
-	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindowasync
 	showWindowAsync := user32.NewProc("ShowWindowAsync")
 	consoleHandle, r2, err := getConsoleWindows.Call()
 	if consoleHandle == 0 {
@@ -152,31 +145,50 @@ func onReady() {
 }
 
 func onExit() {
-	// clean up here
+	log.Info("onExit")
+	net.Close()
 }
 
 func main() {
-	configFpath := flag.String("config", "./config.yaml", "config file")
+	configFpath := flag.String("config", "none", "config file")
 	flag.Parse()
-	config, err := ioutil.ReadFile(*configFpath)
-	checkIfError(err)
+
+	if *configFpath != "none" {
+		var err error
+		configBytes, err = ioutil.ReadFile(*configFpath)
+		checkIfError(err)
+	}
 
 	cfg := &Cfg{}
-	err = yaml.Unmarshal(config, &cfg)
+	err := yaml.Unmarshal(configBytes, &cfg)
 	checkIfError(err)
-
 	logInit(cfg)
 
 	log.Infof("read cfg: %+v \n", cfg)
+
+	proto, err := weights.ReadFile("weights/deploy.prototxt.txt")
+	checkIfError(err)
+	caffemodel, err := weights.ReadFile("weights/res10_300x300_ssd_iter_140000_fp16.caffemodel")
+	checkIfError(err)
+
+	// open DNN object tracking model
+	net, err := gocv.ReadNetFromCaffeBytes(proto, caffemodel)
+	if err != nil {
+		log.Errorf("Error reading network model")
+		return
+	}
+	net.SetPreferableBackend(gocv.NetBackendType(gocv.NetBackendDefault))
+	net.SetPreferableTarget(gocv.NetTargetType(gocv.NetTargetCPU))
+
 	go func() {
 		for {
 			winLocked := winLocked()
 			idleTime := getIdleTime()
 			log.Debugf("ping winLocked:%t idleTime:%8.3f", winLocked, idleTime)
-			if !winLocked && (idleTime > IDLE_LOCK_TIME) {
-				checkAndLock(cfg)
+			if !winLocked && (idleTime > cfg.IdleTIme) {
+				checkAndLock(cfg, &net)
 			}
-			time.Sleep(5 * time.Second)
+			time.Sleep(time.Duration(cfg.CheckTime) * time.Second)
 		}
 	}()
 

@@ -4,6 +4,6 @@ logFileName: "pack_go.log"
 logFileMaxAge: 7
 # 单位为小时
 logFileRotationTime: 1
-model: "weights/res10_300x300_ssd_iter_140000_fp16.caffemodel"
-proto: "weights/deploy.prototxt.txt"
 deviceID: 0
+checkTime: 5
+idleTIme: 10
