@@ -7,3 +7,4 @@ logFileRotationTime: 1
 deviceID: 0
 checkTime: 5
 idleTIme: 10
+islogFile: false

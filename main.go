@@ -27,6 +27,7 @@ var (
 )
 
 type Cfg struct {
+	IslogFile           bool    `yaml:"islogFile"`
 	LogLevel            string  `yaml:"logLevel"`
 	LogFileName         string  `yaml:"logFileName"`
 	LogFileMaxAge       int64   `yaml:"logFileMaxAge"`
