@@ -2,5 +2,9 @@
     "tray_title": "face",
     "tray_tips": "The service is minimized in the lower right corner, right click to open the menu!",
     "exit_menu_title": "exit",
-    "exit_menu_tooltips": "exit app"
+    "exit_menu_tooltips": "exit app",
+    "pause_title": "pause",
+    "pause_tips": "application pause",
+    "open_title": "open",
+    "open_tips": "The application continues to work"
 }

@@ -32,6 +32,8 @@ checkTime: 5
 idleTIme: 10
 # 是否记录日志到文件
 islogFile: false
+# 是否默认开启
+isOpen: true
 ```
 
 ## 其他

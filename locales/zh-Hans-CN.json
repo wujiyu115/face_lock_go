@@ -2,5 +2,9 @@
     "tray_title": "锁定",
     "tray_tips": "该服务在右下角最小化，右键单击以打开菜单！",
     "exit_menu_title": "退出",
-    "exit_menu_tooltips": "退出应用程序"
+    "exit_menu_tooltips": "退出应用程序",
+    "pause_title": "暂停",
+    "pause_tips": "应用程序暂停",
+    "open_title": "打开",
+    "open_tips": "应用程序继续工作"
 }

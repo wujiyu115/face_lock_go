@@ -23,7 +23,8 @@ var configBytes []byte
 var iconByte []byte
 
 var (
-	net gocv.Net
+	net    gocv.Net
+	isOpen bool
 )
 
 type Cfg struct {
@@ -37,6 +38,7 @@ type Cfg struct {
 	DeviceID            int     `yaml:"deviceID"`
 	CheckTime           int     `yaml:"checkTime"`
 	IdleTIme            float32 `yaml:"idleTIme"`
+	IsOpen              bool    `yaml:"isOpen"`
 }
 
 func checkAndLock(cfg *Cfg, n *gocv.Net) {
@@ -98,15 +100,34 @@ func checkAndLock(cfg *Cfg, n *gocv.Net) {
 	log.Debug("End checkAndLock")
 }
 
+func getWorkTitleTips() (string, string) {
+	mTitle := getByMessageID("pause_title")
+	mTips := getByMessageID("pause_tips")
+	if !isOpen {
+		mTitle = getByMessageID("open_title")
+		mTips = getByMessageID("open_tips")
+	}
+	return mTitle, mTips
+}
+
 func onReady() {
 
 	systray.SetIcon(iconByte)
 	systray.SetTitle(getByMessageID("tray_title"))
 	systray.SetTooltip(getByMessageID("tray_tips"))
+
+	mTitle, mTips := getWorkTitleTips()
+	mWork := systray.AddMenuItem(mTitle, mTips)
+	systray.AddSeparator()
 	mQuit := systray.AddMenuItem(getByMessageID("exit_menu_title"), getByMessageID("exit_menu_tooltips"))
 	go func() {
 		for {
 			select {
+			case <-mWork.ClickedCh:
+				isOpen = !isOpen
+				mTitle, mTips := getWorkTitleTips()
+				mWork.SetTitle(mTitle)
+				mWork.SetTooltip(mTips)
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 			}
@@ -136,6 +157,8 @@ func main() {
 	logInit(cfg)
 	initLocalizers()
 
+	isOpen = cfg.IsOpen
+
 	log.Debugf("read cfg: %+v \n", cfg)
 
 	proto, err := weights.ReadFile("weights/deploy.prototxt.txt")
@@ -154,11 +177,13 @@ func main() {
 
 	go func() {
 		for {
-			winLocked := winLocked()
-			idleTime := getIdleTime()
-			log.Debugf("ping winLocked:%t idleTime:%8.3f", winLocked, idleTime)
-			if !winLocked && (idleTime > cfg.IdleTIme) {
-				checkAndLock(cfg, &net)
+			if isOpen {
+				winLocked := winLocked()
+				idleTime := getIdleTime()
+				log.Debugf("ping winLocked:%t idleTime:%8.3f", winLocked, idleTime)
+				if !winLocked && (idleTime > cfg.IdleTIme) {
+					checkAndLock(cfg, &net)
+				}
 			}
 			time.Sleep(time.Duration(cfg.CheckTime) * time.Second)
 		}
